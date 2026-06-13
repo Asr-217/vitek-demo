@@ -1,0 +1,26 @@
+services:
+  api:
+    build: .
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8081
+      DATA_FILE: /data/masseng-dev-db.json
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8081:8081"
+    volumes:
+      - vitek-api-data:/data
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "5173:80"
+    volumes:
+      - ./Web:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  vitek-api-data:
