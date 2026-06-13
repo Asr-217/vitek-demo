@@ -1,3 +1,3 @@
 window.VITEK_CONFIG = {
-  API_BASE: "http://localhost:8081"
+  API_BASE: "https://web-production-7743f.up.railway.app"
 };
