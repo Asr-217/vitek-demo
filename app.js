@@ -34,6 +34,7 @@ const state = {
   settings: { ...defaultSettings, ...readJSON(STORAGE.settings, {}) },
   view: "chats",
   mobileList: true,
+  profileMode: "main",
   conversations: readJSON(STORAGE.conversations, []),
   selectedConversation: null,
   messages: [],
@@ -54,6 +55,7 @@ const app = document.getElementById("app");
 let pollTimer = null;
 let splashTimer = null;
 let stickyTimer = null;
+let messageScrollIntent = { mode: "bottom" };
 
 function icon(name) {
   const icons = {
@@ -126,7 +128,7 @@ function renderSplash() {
       state.booted = true;
       refreshAfterBoot();
     }
-  }, 760);
+  }, 1260);
 }
 
 async function refreshAfterBoot() {
@@ -209,7 +211,6 @@ function renderNav() {
   return `
     <nav class="nav">
       <div class="traffic"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
-      <img class="nav-logo" src="./VitekIcon.png" alt="Vitëk" />
       ${items.map(([view, iconName, label]) => `
         <button class="nav-item ${state.view === view ? "active" : ""}" data-view="${view}" title="${label}">
           ${icon(iconName)}<span>${label}</span>
@@ -246,6 +247,13 @@ function renderSidebar() {
   const visible = filteredConversations();
   return `
     <aside class="sidebar ${state.mobileList ? "mobile-visible" : ""}">
+      <div class="mobile-page-head">
+        <div class="mobile-title-row">
+          ${avatarHTML(state.user)}
+          <h1>Чаты</h1>
+        </div>
+        <button class="icon-btn" data-view="search" title="Поиск">${icon("search")}</button>
+      </div>
       <div class="sidebar-head">
         <div class="search-box">${icon("search")}<input id="chatListSearch" value="${escapeAttr(state.searchQuery)}" placeholder="Поиск" autocomplete="off" /></div>
         <div class="filters">
@@ -318,9 +326,11 @@ function renderChatWorkspace() {
           <button class="icon-btn" id="nextMatch" title="Следующее">↓</button>
         </div>
       </header>
-      <div class="messages-wrap" id="messagesWrap">
+      <div class="messages-shell">
         <div class="sticky-date ${state.stickyDate ? "show" : ""}" id="stickyDate">${escapeHTML(state.stickyDate)}</div>
-        ${renderMessages()}
+        <div class="messages-wrap" id="messagesWrap">
+          ${renderMessages()}
+        </div>
       </div>
       <footer class="composer">
         <input id="imageInput" type="file" accept="image/*" hidden />
@@ -386,19 +396,41 @@ function renderSearchWorkspace() {
 }
 
 function renderProfileWorkspace() {
+  if (state.profileMode === "password") {
+    return `
+      <section class="panel-view profile-screen password-screen">
+        <header class="panel-header mobile-profile-header">
+          <button class="icon-btn" id="backToProfile" title="Назад">${icon("back")}</button>
+          <h1>Изменение пароля</h1>
+          <span></span>
+        </header>
+        <div class="panel-content profile-content">
+          <form class="profile-narrow form password-form" id="passwordForm">
+            <p class="subtle">Создайте новый надежный пароль для вашей учетной записи. Он должен содержать не менее 8 символов.</p>
+            <label class="field"><span>Текущий пароль</span><input class="input password-input" type="password" name="currentPassword" autocomplete="current-password" placeholder="Введите текущий пароль" required /></label>
+            <label class="field"><span>Новый пароль</span><input class="input password-input" type="password" name="newPassword" autocomplete="new-password" placeholder="Введите новый пароль" required /></label>
+            <label class="field"><span>Подтвердите пароль</span><input class="input password-input" type="password" name="repeatPassword" autocomplete="new-password" placeholder="Повторите новый пароль" required /></label>
+            <button class="primary-btn" type="submit">Обновить пароль</button>
+          </form>
+        </div>
+      </section>
+    `;
+  }
+
   return `
-    <section class="panel-view">
-      <header class="panel-header">
-        <h1>Профиль</h1>
-        <p class="subtle">Так тебя видят другие пользователи Vitëk.</p>
+    <section class="panel-view profile-screen">
+      <header class="panel-header mobile-profile-header">
+        <button class="icon-btn mobile-only" data-view="chats" title="Назад">${icon("back")}</button>
+        <h1>Настройки профиля</h1>
+        <span></span>
       </header>
-      <div class="panel-content">
-        <div class="settings-grid">
-          <div class="settings-card glass">
+      <div class="panel-content profile-content">
+        <div class="profile-narrow">
+          <section class="settings-card glass profile-avatar-card">
             <div class="profile-hero">
               ${avatarHTML(state.user)}
               <div>
-                <h2>${escapeHTML(state.user.fullName)}</h2>
+                <h2>Текущее фото</h2>
                 <p class="subtle">@${escapeHTML(state.user.username)}</p>
                 <div class="avatar-actions">
                   <input id="avatarInput" type="file" accept="image/*" hidden />
@@ -407,15 +439,24 @@ function renderProfileWorkspace() {
                 </div>
               </div>
             </div>
-            <div class="info-box">Онлайн · Аккаунт создан ${formatDate(state.user.createdAt)}</div>
-          </div>
-          <form class="settings-card glass form" id="profileForm">
-            <h2>Данные аккаунта</h2>
+          </section>
+          <form class="settings-card glass form profile-form-card" id="profileForm">
+            <h2>Личные данные</h2>
             <label class="field"><span>Имя</span><input class="input" name="fullName" value="${escapeAttr(state.user.fullName)}" required /></label>
             <label class="field"><span>Username</span><input class="input" name="username" value="${escapeAttr(state.user.username)}" required /></label>
             <label class="field"><span>Почта</span><input class="input" type="email" name="email" value="${escapeAttr(state.user.email)}" required /></label>
-            <button class="primary-btn" type="submit">Сохранить профиль</button>
           </form>
+          <section class="profile-section-title">Безопасность</section>
+          <section class="settings-card glass profile-security-card">
+            <button class="security-action" id="openPasswordChange">
+              <span class="security-icon">${icon("settings")}</span>
+              <span>Изменить пароль</span>
+              <span>›</span>
+            </button>
+          </section>
+          <div class="profile-actions">
+            <button class="primary-btn" id="saveProfileButton" type="button">Сохранить изменения</button>
+          </div>
         </div>
       </div>
     </section>
@@ -467,11 +508,11 @@ function renderMobileTabs() {
   return `
     <nav class="mobile-tabbar">
       ${[
-        ["chats", "Чаты"],
-        ["search", "Поиск"],
-        ["profile", "Профиль"],
-        ["settings", "Настройки"]
-      ].map(([view, label]) => `<button class="${state.view === view ? "active" : ""}" data-view="${view}">${label}</button>`).join("")}
+        ["chats", "chats", "Чаты"],
+        ["search", "search", "Поиск"],
+        ["profile", "user", "Профиль"],
+        ["settings", "settings", "Настройки"]
+      ].map(([view, iconName, label]) => `<button class="${state.view === view ? "active" : ""}" data-view="${view}">${icon(iconName)}<span>${label}</span></button>`).join("")}
     </nav>
   `;
 }
@@ -487,6 +528,7 @@ function bindMessengerEvents() {
     button.addEventListener("click", () => {
       state.view = button.dataset.view;
       state.mobileList = state.view === "chats" && !state.selectedConversation;
+      if (state.view !== "profile") state.profileMode = "main";
       state.error = "";
       render();
     });
@@ -568,10 +610,7 @@ function bindMessengerEvents() {
   const messagesWrap = document.getElementById("messagesWrap");
   if (messagesWrap) {
     messagesWrap.addEventListener("scroll", updateStickyDate);
-    requestAnimationFrame(() => {
-      messagesWrap.scrollTop = messagesWrap.scrollHeight;
-      updateStickyDate();
-    });
+    requestAnimationFrame(applyMessageScrollIntent);
   }
 
   const messageSearch = document.getElementById("messageSearch");
@@ -587,6 +626,18 @@ function bindMessengerEvents() {
   document.getElementById("prevMatch")?.addEventListener("click", () => shiftMatch(-1));
 
   document.getElementById("profileForm")?.addEventListener("submit", saveProfile);
+  document.getElementById("saveProfileButton")?.addEventListener("click", () => {
+    document.getElementById("profileForm")?.requestSubmit();
+  });
+  document.getElementById("openPasswordChange")?.addEventListener("click", () => {
+    state.profileMode = "password";
+    render();
+  });
+  document.getElementById("backToProfile")?.addEventListener("click", () => {
+    state.profileMode = "main";
+    render();
+  });
+  document.getElementById("passwordForm")?.addEventListener("submit", changePassword);
   document.getElementById("changeAvatar")?.addEventListener("click", () => document.getElementById("avatarInput").click());
   document.getElementById("avatarInput")?.addEventListener("change", updateAvatar);
   document.getElementById("copyUsername")?.addEventListener("click", copyUsername);
@@ -645,6 +696,7 @@ async function submitAuth(event) {
     localStorage.setItem(STORAGE.user, JSON.stringify(state.user));
     state.view = "chats";
     state.mobileList = true;
+    state.profileMode = "main";
     await refreshConversations();
     startPolling();
   } catch (error) {
@@ -674,20 +726,35 @@ async function selectConversation(conversation) {
   state.selectedConversation = conversation;
   state.mobileList = false;
   markRead(conversation.id);
+  state.stickyDate = "";
+  messageScrollIntent = { mode: "bottom" };
   render();
-  await loadMessages();
+  await loadMessages({ scrollToBottom: true });
 }
 
-async function loadMessages() {
+async function loadMessages(options = {}) {
   if (!state.selectedConversation) return;
+  const wrap = document.getElementById("messagesWrap");
+  const previous = wrap ? {
+    top: wrap.scrollTop,
+    height: wrap.scrollHeight,
+    nearBottom: isNearBottom(wrap)
+  } : null;
   try {
     const encrypted = await api(`/threads/${state.selectedConversation.id}/messages`);
     const messages = [];
     for (const message of encrypted) {
       messages.push(await normalizeMessage(message));
     }
+    if (!options.force && sameMessages(state.messages, messages)) {
+      if (options.scrollToBottom || previous?.nearBottom) scrollMessagesToBottom();
+      return;
+    }
     state.messages = messages;
     markRead(state.selectedConversation.id);
+    messageScrollIntent = options.scrollToBottom || previous?.nearBottom
+      ? { mode: "bottom" }
+      : { mode: "preserve", top: previous?.top || 0, height: previous?.height || 0 };
   } catch (error) {
     state.error = friendlyError(error);
   }
@@ -763,7 +830,7 @@ async function sendPayload(kind, payload) {
       }
     });
     await refreshConversations();
-    await loadMessages();
+    await loadMessages({ scrollToBottom: true });
   } catch (error) {
     state.error = friendlyError(error);
     render();
@@ -787,6 +854,30 @@ async function saveProfile(event) {
     localStorage.setItem(STORAGE.user, JSON.stringify(state.user));
     toast("Профиль обновлён");
     await refreshConversations();
+  } catch (error) {
+    state.error = friendlyError(error);
+  }
+  render();
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const currentPassword = String(form.get("currentPassword") || "");
+  const newPassword = String(form.get("newPassword") || "");
+  const repeatPassword = String(form.get("repeatPassword") || "");
+  if (newPassword !== repeatPassword) {
+    state.error = "Новый пароль и подтверждение не совпадают.";
+    render();
+    return;
+  }
+  try {
+    await api(`/users/${state.user.id}/password`, {
+      method: "PATCH",
+      body: { currentPassword, newPassword }
+    });
+    state.profileMode = "main";
+    toast("Пароль обновлён");
   } catch (error) {
     state.error = friendlyError(error);
   }
@@ -836,17 +927,28 @@ function logout() {
   state.selectedConversation = null;
   state.messages = [];
   state.searchResults = [];
+  state.profileMode = "main";
   state.error = "";
   render();
 }
 
 async function api(path, options = {}) {
   const base = normalizeAPI(state.settings.apiBase);
-  const response = await fetch(`${base}${path}`, {
-    method: options.method || "GET",
-    headers: { "Content-Type": "application/json" },
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeout || 12000);
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, {
+      method: options.method || "GET",
+      headers: { "Content-Type": "application/json" },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal
+    });
+  } catch {
+    throw new Error("serverUnavailable");
+  } finally {
+    clearTimeout(timeout);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || "serverUnavailable");
@@ -1001,6 +1103,41 @@ function scrollToMatch() {
   target?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
+function isNearBottom(element) {
+  return element.scrollHeight - element.scrollTop - element.clientHeight < 96;
+}
+
+function scrollMessagesToBottom() {
+  const wrap = document.getElementById("messagesWrap");
+  if (!wrap) return;
+  wrap.scrollTop = wrap.scrollHeight;
+  updateStickyDate();
+}
+
+function applyMessageScrollIntent() {
+  const wrap = document.getElementById("messagesWrap");
+  if (!wrap) return;
+  if (messageScrollIntent.mode === "bottom") {
+    wrap.scrollTop = wrap.scrollHeight;
+  } else if (messageScrollIntent.mode === "preserve") {
+    const delta = wrap.scrollHeight - messageScrollIntent.height;
+    wrap.scrollTop = Math.max(0, messageScrollIntent.top + delta);
+  }
+  messageScrollIntent = { mode: "none" };
+  updateStickyDate();
+}
+
+function sameMessages(previous, next) {
+  if (previous.length !== next.length) return false;
+  return previous.every((message, index) => {
+    const other = next[index];
+    return other
+      && message.id === other.id
+      && message.deliveredAt === other.deliveredAt
+      && message.payload === other.payload;
+  });
+}
+
 function highlight(html, query) {
   const clean = query.trim();
   if (!clean) return html;
@@ -1012,11 +1149,18 @@ function updateStickyDate() {
   const wrap = document.getElementById("messagesWrap");
   if (!wrap) return;
   const rows = [...wrap.querySelectorAll(".message-row")];
-  const current = rows.findLast ? rows.findLast((row) => row.offsetTop - wrap.scrollTop < 96) : rows.reverse().find((row) => row.offsetTop - wrap.scrollTop < 96);
+  let current = rows[0];
+  for (const row of rows) {
+    if (row.offsetTop - wrap.scrollTop < 112) current = row;
+  }
   const nextDate = current?.dataset.date || state.stickyDate || "";
-  state.stickyDate = nextDate;
   const sticky = document.getElementById("stickyDate");
   if (sticky) {
+    if (state.stickyDate !== nextDate) {
+      sticky.classList.add("swap");
+      setTimeout(() => sticky.classList.remove("swap"), 180);
+    }
+    state.stickyDate = nextDate;
     sticky.textContent = nextDate;
     sticky.classList.add("show");
   }
@@ -1068,6 +1212,7 @@ function friendlyError(error) {
     invalidEmail: "Проверь формат почты.",
     invalidName: "Укажи имя.",
     invalidPassword: "Пароль должен быть не короче 8 символов.",
+    invalidCurrentPassword: "Текущий пароль указан неверно.",
     invalidUsername: "Username: 3-24 символа, латиница, цифры, точка или подчёркивание.",
     serverUnavailable: "Сервер недоступен. Проверь адрес API и запущен ли backend.",
     usernameTaken: "Этот username уже занят.",

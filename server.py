@@ -111,6 +111,7 @@ STATUS_BY_ERROR = {
     "badCredentials": 401,
     "emailTaken": 409,
     "invalidEmail": 400,
+    "invalidCurrentPassword": 401,
     "invalidName": 400,
     "invalidPassword": 400,
     "invalidUsername": 400,
@@ -266,6 +267,21 @@ class Handler(BaseHTTPRequestHandler):
                 credential["email"] = email
                 save_database()
                 self.send_json(200, public_user(user))
+                return
+
+            if self.command == "PATCH" and len(parts) == 3 and parts[0] == "users" and parts[2] == "password":
+                body = self.read_body()
+                credential = next((item for item in DB["credentials"] if item["userID"] == parts[1]), None)
+                if credential is None:
+                    raise ValueError("userNotFound")
+                if not verify_password(body.get("currentPassword"), credential):
+                    raise ValueError("invalidCurrentPassword")
+                validate_password(body.get("newPassword"))
+                password = hash_password(body.get("newPassword"))
+                credential["salt"] = password["salt"]
+                credential["passwordHash"] = password["hash"]
+                save_database()
+                self.send_json(200, {"ok": True})
                 return
 
             if self.command == "GET" and len(parts) == 3 and parts[0] == "users" and parts[2] == "conversations":
