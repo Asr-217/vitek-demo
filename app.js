@@ -91,7 +91,7 @@ function renderSplash() {
     <main class="app-shell">
       <section class="splash">
         <div class="splash-inner">
-          <img class="splash-logo" src="./assets/VitekFullLogo.png" alt="Vitëk" />
+          <img class="splash-logo" src="./VitekFullLogo.png" alt="Vitëk" />
           <div class="splash-card glass">
             <div class="splash-lines" id="splashLines">
               ${phrases.map((phrase, index) => `<div class="splash-line ${index === 0 ? "active" : ""}" data-index="${index}">${index === 0 ? "▶" : ""}<span>${phrase}</span></div>`).join("")}
@@ -143,7 +143,7 @@ function renderAuth() {
       <section class="auth-layout">
         <div class="auth-card glass">
           <div class="brand">
-            <img class="brand-icon" src="./assets/VitekIcon.png" alt="Vitëk" />
+            <img class="brand-icon" src="./VitekIcon.png" alt="Vitëk" />
             <h1 class="brand-title">Vitëk</h1>
             <p class="brand-subtitle">Самый честный мессенджер.</p>
           </div>
@@ -209,7 +209,7 @@ function renderNav() {
   return `
     <nav class="nav">
       <div class="traffic"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
-      <img class="nav-logo" src="./assets/VitekIcon.png" alt="Vitëk" />
+      <img class="nav-logo" src="./VitekIcon.png" alt="Vitëk" />
       ${items.map(([view, iconName, label]) => `
         <button class="nav-item ${state.view === view ? "active" : ""}" data-view="${view}" title="${label}">
           ${icon(iconName)}<span>${label}</span>
@@ -293,7 +293,7 @@ function renderChatWorkspace() {
     return `
       <div class="empty-state">
         <div class="empty-card glass">
-          <img src="./assets/VitekIcon.png" alt="Vitëk" />
+          <img src="./VitekIcon.png" alt="Vitëk" />
           <h2>Выбери чат</h2>
           <p>Или открой поиск, найди человека по username и начни переписку.</p>
         </div>

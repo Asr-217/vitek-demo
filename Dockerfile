@@ -7,10 +7,10 @@ ENV CORS_ORIGINS=*
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
-COPY Server ./Server
+COPY server.py ./server.py
 
 RUN mkdir -p /data
 
 EXPOSE 8081
 
-CMD ["python", "Server/server.py"]
+CMD ["python", "server.py"]

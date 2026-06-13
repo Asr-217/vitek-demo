@@ -4,13 +4,13 @@ services:
     env: python
     plan: starter
     buildCommand: ""
-    startCommand: "python Server/server.py"
+    startCommand: "python server.py"
     envVars:
       - key: HOST
         value: 0.0.0.0
       - key: PORT
         value: 10000
       - key: DATA_FILE
-        value: /opt/render/project/src/Server/masseng-dev-db.json
+        value: /opt/render/project/src/masseng-dev-db.json
       - key: CORS_ORIGINS
         value: https://your-vitek-web-domain.example
